@@ -13,59 +13,70 @@ class PeminjamanController extends Controller
     public function index(Request $request)
     {
         $search = $request->input('search');
-        $peminjaman = Peminjaman::with('anggota','buku')
-            ->when($search, fn($q) => $q->whereHas('anggota', fn($q2) =>
-                  $q2->where('nama','like',"%{$search}%"))
-                ->orWhereHas('buku', fn($q3) =>
-                  $q3->where('judulbuku','like',"%{$search}%")) )
-            ->orderBy('tglpinjam','desc')->paginate(10);
+
+        $peminjaman = Peminjaman::with('anggota', 'buku')
+            ->when($search, function ($query) use ($search) {
+                $query->whereHas('anggota', function ($q) use ($search) {
+                    $q->where('nama', 'like', "%{$search}%");
+                })->orWhereHas('buku', function ($q) use ($search) {
+                    $q->where('judulbuku', 'like', "%{$search}%");
+                });
+            })
+            ->orderBy('tglpinjam', 'desc')
+            ->paginate(10);
 
         $anggota = Anggota::all();
-        $buku    = Buku::all();
-        return view('peminjaman.index', compact('peminjaman','anggota','buku'));
+        $buku = Buku::all();
+
+        return view('peminjaman.index', compact('peminjaman', 'anggota', 'buku'));
     }
 
-    public function store(Request $r)
+    public function store(Request $request)
     {
-        $r->validate([
-            'idpeminjaman'=>'required|unique:tbpeminjaman,idpeminjaman',
-            'idanggota'   =>'required',
-            'idbuku'      =>'required',
-            'tglpinjam'   =>'required|date',
-            'tglkembali'  =>'required|date|after_or_equal:tglpinjam',
+        $request->validate([
+            'idpeminjaman' => 'required|unique:tbpeminjaman,idpeminjaman',
+            'idanggota' => 'required|exists:tbanggota,idanggota',
+            'idbuku' => 'required|exists:tbbuku,idbuku',
+            'tglpinjam' => 'required|date',
+            'tglkembali' => 'required|date|after_or_equal:tglpinjam',
         ]);
-        Peminjaman::create($r->all());
-        return back()->with('success','Ditambahkan.');
+
+        Peminjaman::create($request->all());
+
+        return back()->with('success', 'Data peminjaman berhasil ditambahkan.');
     }
 
-    public function update(Request $r, $id)
+    public function update(Request $request, $id)
     {
-        $r->validate([
-            'idanggota'  =>'required',
-            'idbuku'     =>'required',
-            'tglpinjam'  =>'required|date',
-            'tglkembali' =>'required|date|after_or_equal:tglpinjam',
+        $request->validate([
+            'idanggota' => 'required|exists:tbanggota,idanggota',
+            'idbuku' => 'required|exists:tbbuku,idbuku',
+            'tglpinjam' => 'required|date',
+            'tglkembali' => 'required|date|after_or_equal:tglpinjam',
         ]);
-        Peminjaman::findOrFail($id)->update($r->all());
-        return back()->with('success','Diubah.');
+
+        $peminjaman = Peminjaman::findOrFail($id);
+        $peminjaman->update($request->all());
+
+        return back()->with('success', 'Data peminjaman berhasil diperbarui.');
     }
 
     public function destroy($id)
     {
         Peminjaman::destroy($id);
-        return back()->with('success','Dihapus.');
+        return back()->with('success', 'Data peminjaman berhasil dihapus.');
     }
 
     public function laporan()
     {
-        $data = Peminjaman::with('anggota','buku')
-            ->orderBy('tglpinjam','desc')->get();
+        $data = Peminjaman::with('anggota', 'buku')
+            ->orderBy('tglpinjam', 'desc')
+            ->get();
 
-        // Ubah nama view di sini:
         $html = view('peminjaman.laporanpinjam', compact('data'))->render();
 
         $mpdf = new Mpdf();
         $mpdf->WriteHTML($html);
-        $mpdf->Output('laporan_peminjaman.pdf','I');
+        $mpdf->Output('laporan_peminjaman.pdf', 'I');
     }
 }
