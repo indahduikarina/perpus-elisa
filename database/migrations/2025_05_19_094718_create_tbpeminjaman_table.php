@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('tbtransaksi', function (Blueprint $table) {
+        Schema::create('tbpeminjaman', function (Blueprint $table) {
             $table->string('idpeminjaman', 5)->primary();
             $table->string('idanggota', 5);
             $table->string('idbuku', 5);
@@ -31,6 +31,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('tbtransaksi');
+        Schema::dropIfExists('tbpeminjaman');
     }
 };
